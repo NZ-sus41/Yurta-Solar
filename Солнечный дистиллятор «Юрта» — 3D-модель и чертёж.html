@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Солнечный дистиллятор «Юрта» — 3D-модель</title>
+<style>
+:root{--bg:#e8eef2;--fg:#14212b;--mut:#51636f;--card:#f7fafc;--ln:#c3d0d9;--ac:#0b6e8a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1820;--fg:#e4edf2;--mut:#93a6b2;--card:#15232d;--ln:#2a3d4a;--ac:#4fc0df}}
+:root[data-theme="dark"]{--bg:#0e1820;--fg:#e4edf2;--mut:#93a6b2;--card:#15232d;--ln:#2a3d4a;--ac:#4fc0df}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.w{max-width:1180px;margin:0 auto;padding:14px}
+h1{font:600 21px/1.25 Georgia,"Times New Roman",serif;margin:0 0 2px}
+.s{margin:0 0 10px;color:var(--mut);font-size:14px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;align-items:center}
+button{font:inherit;font-size:14px;border:1px solid var(--ln);background:var(--card);color:var(--fg);padding:6px 11px;border-radius:6px;cursor:pointer}
+button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+label{font-size:14px;color:var(--mut);display:inline-flex;gap:5px;align-items:center;margin-right:8px}
+#st{position:relative;height:min(70vh,700px);min-height:400px;border:1px solid var(--ln);border-radius:8px;overflow:hidden;background:var(--card)}
+#st.dr{background:#fff}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;font:11px system-ui,sans-serif}
+#tb{position:absolute;right:16px;bottom:16px;width:min(310px,36%);border:1.5px solid #111;background:#fff;color:#111;font:11px/1.35 system-ui,sans-serif;padding:6px 8px;display:none}
+#st.dr #tb{display:block}
+#info{margin-top:12px;padding:12px 14px;border:1px solid var(--ln);border-radius:8px;background:var(--card)}
+#info b{font-size:16px}#info p{margin:6px 0 0;max-width:80ch}
+.h{font-size:13px;color:var(--mut);margin-top:6px}
+</style></head><body><div class="w">
+<h1>Солнечный дистиллятор в форме казахской юрты</h1>
+<p class="s">Интерактивная 3D-модель по вашему чертежу + четыре улучшенные версии. Вращайте мышью или пальцем, колесо — масштаб.</p>
+<div class="bar" id="vb"></div>
+<div class="bar">
+<button id="m3" class="on">3D-вид</button><button id="md">Чертёж (сверху, разрез, изометрия)</button>
+<span style="width:8px"></span>
+<label><input type="checkbox" id="cut">Разрез</label>
+<label><input type="checkbox" id="rays">Лучи линз</label>
+<label><input type="checkbox" id="spin" checked>Вентиляторы</label>
+</div>
+<div id="st"><canvas id="cv"></canvas><svg id="ov" fill="none" stroke="#111" stroke-width=".8"></svg>
+<div id="tb"><b>СОЛНЕЧНЫЙ ДИСТИЛЛЯТОР В ФОРМЕ ЮРТЫ</b><br><span id="tv"></span><br>Масштаб 1:20 · ØD = 2000 мм · H ≈ 1000 мм<br>Материал: стекло, нержавеющая сталь, полимеры</div></div>
+<div id="info"></div>
+<p class="h">Размеры условные (ØD 2 м, H ≈ 1 м). Чёрная внутренняя стенка поглощает тепло, светлая наружная остаётся холодной — на ней и идёт быстрая конденсация.</p>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const T=THREE,PI=Math.PI,$=s=>document.querySelector(s),V=(x,y,z)=>new T.Vector3(x,y,z),Y=V(0,1,0);
+const st=$("#st"),cv=$("#cv"),ov=$("#ov");
+const R=new T.WebGLRenderer({canvas:cv,antialias:true,alpha:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new T.Scene();scene.add(new T.AmbientLight(0xffffff,.8));
+const dl=new T.DirectionalLight(0xffffff,.8);dl.position.set(3,5,2);scene.add(dl);
+const pl=new T.Plane(V(0,0,-1),0);
+const M=(c,o={})=>new T.MeshStandardMaterial(Object.assign({color:c,roughness:.55,side:T.DoubleSide},o));
+const tr=(o)=>Object.assign({transparent:true,depthWrite:false},o);
+const mat={out:M(0xeeece6),inn:M(0x0c0c0c,{roughness:.9}),gl:M(0x9fd4ff,tr({opacity:.25,roughness:.1})),ln:M(0xcdeeff,tr({opacity:.5,roughness:.05})),
+wa:M(0x2f80e0,tr({opacity:.6})),ja:M(0x6fb4f0,tr({opacity:.16})),me:M(0xaab2b9,{metalness:.8,roughness:.35}),wd:M(0xc9a36b),cu:M(0xb8733a,{metalness:.7,roughness:.35}),
+pv:M(0x1b3a73,{metalness:.4,roughness:.3}),mir:M(0xe5eef4,{metalness:1,roughness:.1}),dk:M(0x222a30,{metalness:.6})};
+const eMat=new T.LineBasicMaterial({color:0x1a1a1a});
+const Rs=1.4,cy=-.43,th0=.1578,th1=.7956,WH=.55;
+const P=(t,f,r=Rs)=>V(r*Math.sin(t)*Math.cos(f),cy+r*Math.cos(t),r*Math.sin(t)*Math.sin(f));
+let G,fans,edges,rays,cur=0,mode="3d";
+function add(p,geo,m,x=0,y=0,z=0,e=true){const o=new T.Mesh(geo,m);o.position.set(x,y,z);p.add(o);if(e){const l=new T.LineSegments(new T.EdgesGeometry(geo,30),eMat);o.add(l);edges.push(l)}return o}
+const cyl=(p,r,h,m,x,y,z,open)=>add(p,new T.CylinderGeometry(r,r,h,48,1,open),m,x,y,z);
+function rod(p,a,b,r,m){const d=b.clone().sub(a),o=add(p,new T.CylinderGeometry(r,r,d.length(),10),m,0,0,0,false);o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(Y,d.normalize());return o}
+function line(p,pts,loop){const l=new(loop?T.LineLoop:T.Line)(new T.BufferGeometry().setFromPoints(pts),eMat);p.add(l);edges.push(l);return l}
+function circ(p,r,y){const a=[];for(let i=0;i<64;i++){const t=i/64*2*PI;a.push(V(r*Math.cos(t),0,r*Math.sin(t)))}line(p,a,true).position.y=y}
+const flat=o=>{o.rotation.x=PI/2;return o};
+
+function build(v){
+ if(G)scene.remove(G);G=new T.Group();scene.add(G);fans=[];edges=[];cur=v;
+ const pv=v==1||v==4,gu=v==2||v==4,rf=v==3||v==4;
+ // корпус: светлая наружная и чёрная внутренняя стенки, между ними охлаждающая рубашка
+ cyl(G,1,WH,mat.out,0,WH/2,0,true);cyl(G,.93,WH,mat.inn,0,WH/2,0,true);cyl(G,.965,.5,mat.ja,0,.27,0,true);
+ add(G,new T.RingGeometry(.93,1,64),mat.out,0,WH,0).rotation.x=-PI/2;
+ add(G,new T.RingGeometry(.07,1,64),mat.out,0,0,0).rotation.x=-PI/2;
+ add(G,new T.LatheGeometry([new T.Vector2(.07,0),new T.Vector2(.93,.1)],64),mat.inn,0,0,0,false);
+ for(let k=0;k<4;k++){const a=PI/4+k*PI/2;cyl(G,.04,.3,mat.me,.8*Math.cos(a),-.15,.8*Math.sin(a))}
+ // патрубок откачки и подвод солёной воды
+ cyl(G,.035,.14,mat.me,0,-.07,0);rod(G,V(0,-.14,0),V(1.12,-.14,0),.035,mat.me);
+ rod(G,V(-.2,.27,0),V(rf?-1.45:-1.12,.27,0),.02,mat.me);
+ // малый резервуар
+ cyl(G,.2,.16,mat.inn,0,.28,0,true);add(G,new T.CircleGeometry(.2,32),mat.inn,0,.2,0,false).rotation.x=-PI/2;
+ cyl(G,.195,.08,mat.wa,0,.29,0,false);circ(G,.2,.36);
+ for(let k=0;k<3;k++){const a=k*2.094;rod(G,V(.15*Math.cos(a),0,.15*Math.sin(a)),V(.15*Math.cos(a),.2,.15*Math.sin(a)),.012,mat.me)}
+ // купол из стёкол и улуки
+ const glass=r=>add(G,new T.SphereGeometry(r,64,20,0,2*PI,th0,th1-th0),mat.gl,0,cy,0,false);glass(Rs);
+ circ(G,1,WH);circ(G,.2205,.9526);
+ for(let k=0;k<12;k++){const pts=[];for(let i=0;i<=12;i++)pts.push(P(th0+(th1-th0)*i/12,k*PI/6,Rs+.008));
+  const c=new T.CatmullRomCurve3(pts);add(G,new T.TubeGeometry(c,24,.012,6),mat.wd,0,0,0,false);line(G,c.getPoints(24))}
+ flat(add(G,new T.TorusGeometry(1,.02,8,64),mat.me,0,WH,0,false));
+ // шаңырақ: кольцо и крест
+ flat(add(G,new T.TorusGeometry(.2205,.022,8,32),mat.wd,0,.9526,0,false));
+ add(G,new T.BoxGeometry(.44,.02,.02),mat.wd,0,.9526,0,false);add(G,new T.BoxGeometry(.02,.02,.44),mat.wd,0,.9526,0,false);
+ // 12 круглых луп
+ const rp=[];
+ for(let k=0;k<12;k++){const p=P(.5,(k+.5)*PI/6,Rs+.012),n=p.clone().sub(V(0,cy,0)).normalize(),g=new T.Group();
+  g.position.copy(p);g.quaternion.setFromUnitVectors(Y,n);G.add(g);
+  add(g,new T.SphereGeometry(.14,24,12),mat.ln,0,0,0,false).scale.set(1,.3,1);flat(add(g,new T.TorusGeometry(.14,.01,8,32),mat.me,0,0,0,false));circ(g,.14,0);rp.push(p,V(0,.34,0))}
+ rays=new T.LineSegments(new T.BufferGeometry().setFromPoints(rp),new T.LineBasicMaterial({color:0xffb300}));G.add(rays);
+ // система из 4 вентиляторов под шаңыраком
+ cyl(G,.035,.03,mat.me,0,.8,0,false);
+ for(let k=0;k<4;k++){const a=PI/4+k*PI/2,c=Math.cos(a),s=Math.sin(a),fp=new T.Group();
+  fp.position.set(.12*c,.8,.12*s);fp.quaternion.setFromUnitVectors(Y,V(.5*c,.87,.5*s).normalize());G.add(fp);
+  flat(add(fp,new T.TorusGeometry(.065,.006,6,24),mat.me,0,0,0,false));
+  const ro=new T.Group();fp.add(ro);fans.push(ro);cyl(ro,.012,.02,mat.me,0,0,0,false);
+  for(let j=0;j<3;j++){const b=add(ro,new T.BoxGeometry(.055,.004,.02),mat.inn,Math.cos(j*2.094)*.03,0,Math.sin(j*2.094)*.03,false);b.rotation.y=-j*2.094;b.rotation.z=.4}
+  rod(G,V(0,.8,0),V(.12*c,.8,.12*s),.008,mat.me)}
+ if(pv){ // солнечная панель питает вентиляторы и насос; поворотная платформа
+  cyl(G,1.35,.05,mat.dk,0,-.33,0,false);flat(add(G,new T.TorusGeometry(1.35,.02,8,64),mat.me,0,-.3,0,false));
+  add(G,new T.BoxGeometry(.2,.1,.12),mat.dk,1.5,-.3,0,false);
+  cyl(G,.03,.5,mat.me,0,.1,1.9,false);add(G,new T.BoxGeometry(.7,.03,.45),mat.pv,0,.4,1.9,false).rotation.x=-.7;
+  rod(G,V(0,.3,1.9),V(0,.56,1.0),.008,M(0x222222))}
+ if(gu){ // двойной купол, жёлоб конденсата, змеевик подогрева воды
+  glass(Rs+.06);flat(add(G,new T.TorusGeometry(.95,.035,8,64),mat.me,0,.58,0,false));
+  const h=[];for(let i=0;i<=200;i++){const t=i/200,a=t*PI*10;h.push(V(.88*Math.cos(a),.06+.42*t,.88*Math.sin(a)))}
+  add(G,new T.TubeGeometry(new T.CatmullRomCurve3(h),300,.012,6),mat.cu,0,0,0,false)}
+ if(rf){ // зеркальные отражатели, тепловой аккумулятор, бак подпитки
+  for(let k=0;k<12;k++){const a=k*PI/6,c=Math.cos(a),s=Math.sin(a),n=V(-c*.6,.8,-s*.6).normalize(),t=V(-s,0,c),m4=new T.Matrix4().makeBasis(t,n,new T.Vector3().crossVectors(t,n));
+   const m=add(G,new T.BoxGeometry(.5,.02,.32),mat.mir,1.22*c,.5,1.22*s,true);m.quaternion.setFromRotationMatrix(m4)}
+  [[0,0],[.08,0],[-.08,0],[.04,.07],[-.04,.07],[.04,-.07],[-.04,-.07]].forEach(q=>add(G,new T.SphereGeometry(.04,12,8),mat.dk,q[0],.25,q[1],false));
+  cyl(G,.12,.22,mat.out,-1.45,.95,0,false);rod(G,V(-1.45,.84,0),V(-1.45,.27,0),.02,mat.me)}
+ edges.forEach(l=>l.visible=mode=="dr");
+}
+
+// ---- чертёж: три вида на одном листе
+const VP=[["top",.02,.07,.46,.43],["sec",.5,.07,.48,.43],["iso",.02,.53,.62,.45]];
+const CAM={top:{p:[0,8,0],u:[0,0,-1],ex:[1.3,1.3]},sec:{p:[0,.3,8],u:[0,1,0],ex:[1.6,1]},iso:{p:[5,4.1,5],u:[0,1,0],ex:[1.9,1.15]}};
+let rects={},cams={};
+function layout(){const W=st.clientWidth,H=st.clientHeight,k=cur?1.35:1;
+ VP.forEach(([id,a,b,c,d])=>{const r={x:a*W,y:b*H,w:c*W,h:d*H};rects[id]=r;const cf=CAM[id],asp=r.w/r.h,hh=Math.max(cf.ex[1],cf.ex[0]/asp)*(id=="sec"?1:k);
+  const c0=new T.OrthographicCamera(-hh*asp,hh*asp,hh,-hh,.1,40);c0.position.set(...cf.p);c0.up.set(...cf.u);c0.lookAt(0,.3,0);c0.updateMatrixWorld(true);cams[id]=c0})}
+function drawOv(){if(mode!="dr"){ov.innerHTML="";return}
+ const W=st.clientWidth,H=st.clientHeight;ov.setAttribute("viewBox",`0 0 ${W} ${H}`);
+ const pj=(id,p)=>{const r=rects[id],v=V(...p).project(cams[id]);return[r.x+(v.x+1)/2*r.w,r.y+(1-v.y)/2*r.h]};
+ const L=(a,b,c,d,x)=>`<line x1="${a}" y1="${b}" x2="${c}" y2="${d}" ${x?'stroke-dasharray="7 3"':""}/>`;
+ const Tx=(x,y,t,a,sz)=>`<text x="${x}" y="${y}" text-anchor="${a||"start"}" font-size="${sz||11}" ${sz?'font-weight="700"':""} fill="#111" stroke="none">${t}</text>`;
+ const co=(id,p,t,dx,dy)=>{const[a,b]=pj(id,p);return L(a,b,a+dx,b+dy)+`<circle cx="${a}" cy="${b}" r="2.2" fill="#111"/>`+Tx(a+dx+(dx>0?4:-4),b+dy+4,t,dx>0?"start":"end")};
+ const dim=(id,A,B,t)=>{const a=pj(id,A),b=pj(id,B),dx=b[0]-a[0],dy=b[1]-a[1],n=Math.hypot(dx,dy),px=-dy/n*5,py=dx/n*5;
+  return L(...a,...b)+L(a[0]-px,a[1]-py,a[0]+px,a[1]+py)+L(b[0]-px,b[1]-py,b[0]+px,b[1]+py)+Tx((a[0]+b[0])/2+(Math.abs(dy)>Math.abs(dx)?8:-10),(a[1]+b[1])/2-5,t,"start",12)};
+ let s=`<rect x="8" y="8" width="${W-16}" height="${H-16}" stroke-width="2"/>`;
+ s+=Tx(rects.top.x,rects.top.y-8,"ВИД СВЕРХУ","start",15)+Tx(rects.sec.x,rects.sec.y-8,"РАЗРЕЗ А–А","start",15)+Tx(rects.iso.x,rects.iso.y-8,"ИЗОМЕТРИЧЕСКАЯ ПРОЕКЦИЯ","start",15);
+ s+=dim("top",[-1,.5,-1.2],[1,.5,-1.2],"ØD");
+ const a1=pj("top",[-1.25,.5,0]),a2=pj("top",[1.25,.5,0]);s+=L(...a1,...a2,1)+Tx(a1[0]-12,a1[1]+4,"A")+Tx(a2[0]+5,a2[1]+4,"A");
+ s+=co("top",[.2205,.95,0],"Шаңырақ",90,-75)+co("top",[-.085,.8,.085],"4 вентилятора",-105,85)+co("top",P(.5,.4*PI/6+.4,Rs),"Круглые лупы",80,40)+co("top",P(.72,3.46),"Улуки (стекло)",-90,-45);
+ s+=dim("sec",[1.45,-.3,0],[1.45,.97,0],"H");
+ s+=co("sec",P(.5,0),"Улуки (стекло)",55,-50)+co("sec",[0,.8,0],"Вентиляторы",-70,-50)+co("sec",[.2,.3,0],"Малый резервуар",70,-60)
+  +co("sec",[-.93,.15,0],"Стенка-конденсатор",-10,75)+co("sec",[.9,-.14,0],"Сбор воды",40,40)+co("sec",[-.5,-.05,0],"Патрубок откачки",-10,55);
+ s+=co("iso",[.2205,.95,0],"Шаңырақ",90,-55)+co("iso",P(.5,3.5*PI/6,Rs),"Круглая лупа",-130,-45)+co("iso",[1.12,-.14,0],"Патрубок откачки",60,45);
+ ov.innerHTML=s}
+function fit(){const w=st.clientWidth;st.style.height=mode=="dr"?Math.max(540,Math.round(w*.64))+"px":"";R.setSize(st.clientWidth,st.clientHeight,false);layout();drawOv()}
+
+// ---- интерфейс
+const INFO=[
+["Базовая модель (по чертежу)","Двустенный корпус: внутренняя стенка чёрная — поглощает тепло, наружная светлая — остаётся холоднее, поэтому пар конденсируется быстрее. Купол из стекла (улуки) несёт 12 круглых луп, которые фокусируют солнце на малый резервуар с солёной водой в центре. Под шаңырақом 4 вентилятора сдувают пар со стёкол. Конденсат стекает по стенкам в нижнюю воронку и откачивается через патрубок."],
+["Улучшение 1 — солнечное питание и слежение","Солнечная панель питает вентиляторы и насос, поэтому установка работает автономно. Корпус стоит на поворотной платформе с приводом: лупы всё время смотрят на солнце, и в течение дня на резервуар приходит больше энергии."],
+["Улучшение 2 — рекуперация тепла","Двойной купол с воздушной прослойкой снижает потери тепла вверх. Медный змеевик вдоль чёрной стенки подогревает исходную воду теплом конденсации, а жёлоб по краю купола собирает капли, стекающие со стекла."],
+["Улучшение 3 — отражатели и аккумулятор","12 зеркальных лепестков вокруг основания добавляют свет на лупы и стенки. Базальтовые шары в малом резервуаре копят тепло и продолжают нагревать воду после захода солнца. Бак с поплавком подаёт солёную воду по мере испарения."],
+["Все улучшения вместе","Солнечная панель и слежение, двойной купол со змеевиком и жёлобом, зеркала, тепловой аккумулятор и бак подпитки: максимальная производительность и круглосуточная работа."]];
+const NAMES=["Базовая","+ Солнце и слежение","+ Рекуперация тепла","+ Отражатели и аккумулятор","Все улучшения"];
+function setV(v){build(v);document.querySelectorAll("#vb button").forEach((b,i)=>b.classList.toggle("on",i==v));
+ $("#info").innerHTML=`<b>${INFO[v][0]}</b><p>${INFO[v][1]}</p>`;$("#tv").textContent=INFO[v][0];fit()}
+NAMES.forEach((n,i)=>{const b=document.createElement("button");b.textContent=n;b.onclick=()=>setV(i);$("#vb").appendChild(b)});
+function setM(m){mode=m;st.classList.toggle("dr",m=="dr");$("#m3").classList.toggle("on",m=="3d");$("#md").classList.toggle("on",m=="dr");edges.forEach(l=>l.visible=m=="dr");fit()}
+$("#m3").onclick=()=>setM("3d");$("#md").onclick=()=>setM("dr");addEventListener("resize",fit);
+
+// орбитальная камера
+const cam3=new T.PerspectiveCamera(38,1,.1,60),vw={th:.8,ph:1.15,d:5.6};let drag=null;
+cv.onpointerdown=e=>{drag=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)};
+cv.onpointermove=e=>{if(!drag||mode!="3d")return;vw.th-=(e.clientX-drag[0])*.008;vw.ph=Math.min(1.5,Math.max(.15,vw.ph-(e.clientY-drag[1])*.008));drag=[e.clientX,e.clientY]};
+cv.onpointerup=()=>drag=null;
+cv.onwheel=e=>{e.preventDefault();vw.d=Math.min(10,Math.max(2.5,vw.d*(1+e.deltaY*.001)))};
+
+function frame(){requestAnimationFrame(frame);
+ if($("#spin").checked)fans.forEach(f=>f.rotation.y+=.4);rays.visible=$("#rays").checked;
+ const W=st.clientWidth,H=st.clientHeight;
+ if(mode=="3d"){R.setScissorTest(false);R.setViewport(0,0,W,H);R.clippingPlanes=$("#cut").checked?[pl]:[];
+  cam3.aspect=W/H;cam3.updateProjectionMatrix();cam3.position.set(vw.d*Math.sin(vw.ph)*Math.sin(vw.th),.3+vw.d*Math.cos(vw.ph),vw.d*Math.sin(vw.ph)*Math.cos(vw.th));cam3.lookAt(0,.3,0);R.render(scene,cam3)}
+ else{R.setScissorTest(true);VP.forEach(([id])=>{const r=rects[id],y=H-r.y-r.h;R.clippingPlanes=id=="sec"?[pl]:[];R.setViewport(r.x,y,r.w,r.h);R.setScissor(r.x,y,r.w,r.h);R.render(scene,cams[id])})}}
+setV(0);frame();
+</script></body></html>
